@@ -38,10 +38,11 @@ public class Main implements Runnable
             // do a computation using the input stream,
             // checking that we don't read more than (end-start) bytes
             int end_location = (int) (_startLocation + _size);
+            if(end_location -_startLocation <= 1)
+                return;
             System.out.println("Computing the part from " + _startLocation + " to " + end_location);
 
             Scanner lineScanner = new Scanner(is);
-            System.out.println();
             while(_startLocation < end_location)
             {
                 if(lineScanner.hasNextLine()) {
@@ -50,11 +51,20 @@ public class Main implements Runnable
                     if(split[0].length() <= 0)
                         continue;;
                     if(split[0].charAt(0) != 'o') {
+                        // Incomplete line
                         continue;
                     }
-                    System.out.println(line);
+                    if(line.length() <= 0)
+                        continue;
+
+                  if(myMap.get(split[0]) != null) { // dont queue the same order more times
+                      continue;
+                  }
+                    System.out.println("Thread: " + _sequence_number + " Line: " + line + " from " + _startLocation + " to " + end_location);
                     Main.line++;
+                  // }
                     myMap.put(split[0],1);
+
                     _startLocation += line.length();
                 } else {
                     break;
@@ -113,6 +123,5 @@ public class Main implements Runnable
         }
         System.out.println("Finished all threads");
         System.out.println(Main.line);
-        System.out.println(Main.myMap.size());
     }
 }
