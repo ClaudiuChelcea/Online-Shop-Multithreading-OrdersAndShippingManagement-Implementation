@@ -1,89 +1,118 @@
 import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import static java.lang.Math.toIntExact;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Main {
-    private File file;
+public class Main implements Runnable
+{
+    static File file;
+    private long _startLocation;
+    private int _size;
+    int _sequence_number;
+    int chunk_size;
+    static int line = 0;
+    static HashMap<String, Integer> myMap = new HashMap<>();
 
-    public Main(File _file) {
-        // Check if the file exists
-        if(_file.exists() == false) {
-            System.out.println("File doesn't exist");
-            return;
-        }
-        this.file = _file;
-    }
-
-    // Processes the given portion of the file.
-    // Called simultaneously from several threads.
-    // Use your custom return type as needed, I used String just to give an example.
-    public String processPart(long start, long end)
-            throws Exception
+    public Main(long loc, int size, int sequence)
     {
-        InputStream is = new FileInputStream(file);
-        is.skip(start);
-
-        // do a computation using the input stream,
-        // checking that we don't read more than (end-start) bytes
-        System.out.println("Computing the part from " + start + " to " + end);
-
-        // Thread.sleep(1000);
-        System.out.println("Finished the part from " + start + " to " + end);
-
-        is.close();
-        return "Some result";
+        _startLocation = loc;
+        _size = size;
+        _sequence_number = sequence;
     }
 
-    // Creates a task that will process the given portion of the file,
-    // when executed.
-    public Callable<String> processPartTask(final long start, final long end) {
-        return new Callable<String>() {
-            public String call()
-                    throws Exception
+    @Override
+    public void run()
+    {
+        try
+        {
+            InputStream is = new FileInputStream(file);
+            is.skip(_startLocation);
+
+            // do a computation using the input stream,
+            // checking that we don't read more than (end-start) bytes
+            int end_location = (int) (_startLocation + _size);
+            System.out.println("Computing the part from " + _startLocation + " to " + end_location);
+
+            Scanner lineScanner = new Scanner(is);
+            System.out.println();
+            while(_startLocation < end_location)
             {
-                return processPart(start, end);
+                if(lineScanner.hasNextLine()) {
+                    String line = lineScanner.nextLine();
+                    String[] split = line.split(",");
+                    if(split[0].length() <= 0)
+                        continue;;
+                    if(split[0].charAt(0) != 'o') {
+                        continue;
+                    }
+                    System.out.println(line);
+                    Main.line++;
+                    myMap.put(split[0],1);
+                    _startLocation += line.length();
+                } else {
+                    break;
+                }
             }
-        };
-    }
 
-    // Splits the computation into chunks of the given size,
-    // creates appropriate tasks and runs them using a
-    // given number of threads.
-    public void processAll(int noOfThreads, int chunkSize)
-            throws Exception
-    {
-        int count = (int)((file.length() + chunkSize - 1) / chunkSize);
-        java.util.List<Callable<String>> tasks = new ArrayList<Callable<String>>(count);
-        for(int i = 0; i < count; i++)
-            tasks.add(processPartTask(i * chunkSize, Math.min(file.length(), (i+1) * chunkSize)));
-        ExecutorService es = Executors.newFixedThreadPool(noOfThreads);
+            System.out.println("Finished the part from " + _startLocation + " to " + end_location);
 
-        java.util.List<Future<String>> results = es.invokeAll(tasks);
-        es.shutdown();
+            is.close();
 
-        // use the results for something
-        for(Future<String> result : results)
-            System.out.println(result.get());
-    }
-
-    public static void main(String argv[])
-            throws Exception
-    {
-        // Orders input file
-        File ordersFile = new File(argv[0].toString());
-
-        // Max number of threads
-        int numThreads = Integer.parseInt(argv[1]);
-        int cores = Runtime.getRuntime().availableProcessors(); // max number of cores on my PC
-
-        // Start reading (if possible)
-        if(ordersFile.exists() == false || numThreads <= 0 || numThreads > cores) {
-            System.out.println("File doesn't exist or the number of threads is impossible!");
-            return;
-        } else {
-            Main s = new Main(ordersFile);
-            long chunk_size = ordersFile.length() / numThreads;
-            s.processAll(numThreads, (int) chunk_size);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
         }
+    }
+
+    //args[0] is path to read file
+//args[1] is the size of thread pool; Need to try different values to fing sweet spot
+    public static void main(String[] args) throws Exception
+    {
+        file = new File(args[0]);
+        long remaining_size = file.length(); //get the total number of bytes in the file
+        long chunk_size = remaining_size / Integer.parseInt(args[1]); //file_size/threads
+        chunk_size = chunk_size;
+
+        //Max allocation size allowed is ~2GB
+        if (chunk_size > (Integer.MAX_VALUE - 5))
+        {
+            chunk_size = (Integer.MAX_VALUE - 5);
+        }
+
+        //thread pool
+        ExecutorService executor = Executors.newFixedThreadPool(Integer.parseInt(args[1]));
+
+        long start_loc = 0;//file pointer
+        int i = 0; //loop counter
+        while (remaining_size >= chunk_size)
+        {
+            //launches a new thread
+            executor.execute(new Main(start_loc, toIntExact(chunk_size), i));
+            remaining_size = remaining_size - chunk_size;
+            start_loc = start_loc + chunk_size;
+            i++;
+        }
+
+        //load the last remaining piece
+        executor.execute(new Main(start_loc, toIntExact(remaining_size), i));
+
+        //Tear Down
+        executor.shutdown();
+
+        //Wait for all threads to finish
+        while (!executor.isTerminated())
+        {
+            //wait for infinity time
+        }
+        System.out.println("Finished all threads");
+        System.out.println(Main.line);
+        System.out.println(Main.myMap.size());
     }
 }
