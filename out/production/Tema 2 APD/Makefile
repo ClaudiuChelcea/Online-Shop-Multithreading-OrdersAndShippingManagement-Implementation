@@ -1,5 +1,22 @@
-build:
-		javac *.java
+JFLAGS = -g
+JC = javac
+
+.SUFFIXES: .java .class
+
+.java.class:
+	$(JC) $(JFLAGS) $*.java
+
+CLASSES = \
+		  Tema2.java
+
+default: classes
+
+build: classes
+
+classes: $(CLASSES:.java=.class)
 
 clean:
-		rm *.class
+	$(RM) *.class
+
+run:
+	java main

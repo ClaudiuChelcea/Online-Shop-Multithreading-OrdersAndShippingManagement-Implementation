@@ -3,10 +3,12 @@ import static java.lang.Math.toIntExact;
 import java.nio.*;
 import java.nio.channels.*;
 import java.nio.charset.Charset;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,7 +20,13 @@ public class Main implements Runnable
     int _sequence_number;
     int chunk_size;
     static int line = 0;
-    static HashMap<String, Integer> myMap = new HashMap<>();
+    static ConcurrentHashMap
+            <String, Integer> myMap;
+
+    static {
+        myMap = new ConcurrentHashMap
+                <>();
+    }
 
     public Main(long loc, int size, int sequence)
     {
@@ -43,10 +51,11 @@ public class Main implements Runnable
             System.out.println("Computing the part from " + _startLocation + " to " + end_location);
 
             Scanner lineScanner = new Scanner(is);
+            String line;
             while(_startLocation < end_location)
             {
                 if(lineScanner.hasNextLine()) {
-                    String line = lineScanner.nextLine();
+                    line = lineScanner.nextLine();
                     String[] split = line.split(",");
                     if(split[0].length() <= 0)
                         continue;;
@@ -57,15 +66,17 @@ public class Main implements Runnable
                     if(line.length() <= 0)
                         continue;
 
-                  if(myMap.get(split[0]) != null) { // dont queue the same order more times
+                   if(myMap.get(split[0]) != null) { // dont queue the same order more times
+                     //  System.out.println("ALREADY IN!!!! " + split[0]);
                       continue;
-                  }
-                    System.out.println("Thread: " + _sequence_number + " Line: " + line + " from " + _startLocation + " to " + end_location);
-                    Main.line++;
-                  // }
-                    myMap.put(split[0],1);
-
-                    _startLocation += line.length();
+                   } else {
+                       // Send product to be searched for
+                       System.out.println("Thread: " + _sequence_number + " Line: " + line + " from " + _startLocation + " to " + end_location);
+                       Main.line++;
+                       if(split[0].charAt(0) == 'o')
+                        myMap.putIfAbsent(split[0],Integer.parseInt(split[1]));
+                       _startLocation += line.length();
+                   }
                 } else {
                     break;
                 }
@@ -123,5 +134,6 @@ public class Main implements Runnable
         }
         System.out.println("Finished all threads");
         System.out.println(Main.line);
+        System.out.println(myMap.size());
     }
 }
