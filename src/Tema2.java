@@ -107,6 +107,11 @@ public class Tema2 implements Runnable {
             fileManager.getProductsOutputFile().createNewFile();
         }
 
+        // Create writers
+        fileManager.setOrdersWriter(new FileWriter(fileManager.getOrdersOutputFile(), true));
+        fileManager.setProductsWriter(new FileWriter(fileManager.getProductsOutputFile(), true));
+
+
         // Thread manager
         threadManager.setNumberOfThreads(Integer.parseInt(args[1]));
 
@@ -164,20 +169,6 @@ public class Tema2 implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            FileWriter myWriter1;
-            try {
-                myWriter1 = new FileWriter(fileManager.getProductsOutputFile(), true);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            FileWriter myWriter;
-            try {
-                myWriter = new FileWriter(fileManager.getOrdersOutputFile(), true);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
             while (newScanner.hasNextLine()) {
                 String line;
                 line = newScanner.nextLine();
@@ -192,8 +183,8 @@ public class Tema2 implements Runnable {
 
                     String output1 = _order + "," + split[1] + ",shipped\n";
                     try {
-                        myWriter1.write(output1);
-                        myWriter1.flush();
+                        fileManager.getProductsWriter().write(output1);
+                        fileManager.getProductsWriter().flush();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -203,8 +194,8 @@ public class Tema2 implements Runnable {
 
                         if (Tema2.uniqueOrdersMap.get(split[0]) == 0) {
                             try {
-                                myWriter.write(_order + "," + const_num_products + ",shipped\n");
-                                myWriter.flush();
+                                fileManager.getOrdersWriter().write(_order + "," + const_num_products + ",shipped\n");
+                                fileManager.getOrdersWriter().flush();
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
