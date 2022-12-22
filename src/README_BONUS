@@ -1,0 +1,9 @@
+Readme_bonus
+
+Citirea pe bytes este realizata prin impartirea initiala a fisierului
+orders in chunk-uri egale.
+
+Totul bine si frumos, doar ca unele thread-uri ar putea avea pointerul
+de start la mijlocul unei linii, caz in care acel thread ii da skip
+acelei linii, linia fiind preluata de thread-ul anterior, chiar daca sare
+putin peste dimensiunea alocata lui.

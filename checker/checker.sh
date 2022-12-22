@@ -20,6 +20,7 @@ function compare_outputs {
 }
 
 echo "VMCHECKER_TRACE_CLEANUP"
+date
 
 # se compileaza tema
 cd ../src
@@ -49,7 +50,7 @@ do
 	# rm -rf orders_out.txt
 	# rm -rf order_products_out.txt
 
-    java Tema2 input/input_${i} ${no_threads[$i]}
+    java Tema2 input/input_${i} ${no_threads[$i]} &> /dev/null
 
 	# se verifica daca rezultatele sunt corecte
     sort -o orders_out.txt orders_out.txt
