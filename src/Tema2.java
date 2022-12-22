@@ -20,14 +20,79 @@ public class Tema2 implements Runnable {
     static ExecutorService productsScannerThreadPool;
 
     // For byte reaading
-    private long _nrOfBytesToSkip;
+    private long nrOfBytesToSkip;
 
     // For making sure we have unique items
     static HashMap<String, Integer > uniqueOrdersMap = new HashMap <> ();;
 
+    class Products implements Runnable {
+        String order_name;
+        int product_index;
+        int order_product_max_index;
+        int product_order = 0;
+
+        public Products(String _order_name, int _product_index, int _order_product_max_index) {
+            order_name = _order_name;
+            product_index = _product_index;
+            order_product_max_index = _order_product_max_index;
+        }
+
+        @Override
+        public void run() {
+            // Open the file
+            File fopen = new File(fileManager.getProductsString());
+
+            Scanner myScanner;
+            try {
+                myScanner = new Scanner(fopen);
+                if(myScanner.hasNextLine() == false) {
+                    System.out.println("My products scanner doesn't work!");
+                }
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Read by line
+            while (myScanner.hasNextLine()) {
+                // Split the line
+                String line = myScanner.nextLine();
+                String[] split = line.split(",");
+                if (split[0].equals(order_name)) {
+                    product_order++;
+                }
+
+                // We reach our product, ship the product
+                if (product_order == product_index) {
+
+                    try {
+                        fileManager.getProductsWriter().write(order_name + "," + split[1] + ",shipped\n");
+                        fileManager.getProductsWriter().flush();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    synchronized (uniqueOrdersMap) {
+                        Tema2.uniqueOrdersMap.put(split[0], Tema2.uniqueOrdersMap.get(split[0]) + 1);
+
+                        // If we finish with all products in that order, ship the order
+                        if (Tema2.uniqueOrdersMap.get(split[0]) == order_product_max_index) {
+                            try {
+                                fileManager.getOrdersWriter().write(order_name + "," + order_product_max_index + ",shipped\n");
+                                fileManager.getOrdersWriter().flush();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     // Constructor
-    public Tema2(long nrOfBytesToSkip) {
-        _nrOfBytesToSkip = nrOfBytesToSkip;
+    public Tema2(long _nrOfBytesToSkip) {
+        nrOfBytesToSkip = _nrOfBytesToSkip;
     }
 
     @Override
@@ -35,11 +100,11 @@ public class Tema2 implements Runnable {
         try {
             // Go to the point in file where we need to go
             FileInputStream input = new FileInputStream(fileManager.getOrdersFile());
-            input.skip(_nrOfBytesToSkip);
+            input.skip(nrOfBytesToSkip);
 
             Scanner myScanner = new Scanner(input);
 
-            while (_nrOfBytesToSkip < (int)(_nrOfBytesToSkip + fileProgressManager.getChunk_Size())) {
+            while (nrOfBytesToSkip < (int)(nrOfBytesToSkip + fileProgressManager.getChunk_Size())) {
                 if (myScanner.hasNextLine()) {
                     // Get each line and split the string
                     String line = myScanner.nextLine();
@@ -54,11 +119,11 @@ public class Tema2 implements Runnable {
                         if (uniqueOrdersMap.get(stringSplit[0]) != null) {
                             continue;
                         } else {
-                            _nrOfBytesToSkip += line.length();
+                            nrOfBytesToSkip += line.length();
 
                             // Queue all products
                             if (stringSplit[0].charAt(1) == '_') {
-                                uniqueOrdersMap.put(stringSplit[0], Integer.parseInt(stringSplit[1]));
+                                uniqueOrdersMap.put(stringSplit[0], 0);
                                 for (int i = 1; i <= Integer.parseInt(stringSplit[1]); ++i) {
                                     productsScannerThreadPool.submit(new Products(stringSplit[0], i, Integer.parseInt(stringSplit[1])));
                                 }
@@ -137,73 +202,5 @@ public class Tema2 implements Runnable {
         ordersReaderThreadPool.shutdown();
         ordersReaderThreadPool.awaitTermination(1000, TimeUnit.SECONDS);
         productsScannerThreadPool.shutdown();
-    }
-
-    class Products implements Runnable {
-        String _order;
-        int _product_number;
-        int const_num_products;
-
-        public Products(String order, int product_number, int max_products) {
-            _order = order;
-            _product_number = product_number;
-            const_num_products = max_products;
-        }
-
-        @Override
-        public void run() {
-            File fopen = new File(fileManager.getProductsString());
-
-            if (fopen.exists() == false) {
-                System.out.println("No products file");
-                throw new RuntimeException();
-            }
-
-            Scanner newScanner;
-            try {
-                newScanner = new Scanner(fopen);
-                if(newScanner.hasNextLine() == false) {
-                    System.out.println("wrong");
-                }
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-
-            while (newScanner.hasNextLine()) {
-                String line;
-                line = newScanner.nextLine();
-
-                String[] split = line.split(",");
-                //
-                if (split[0].equals(_order)) {
-                    --_product_number;
-                }
-
-                if (_product_number == 0) {
-
-                    String output1 = _order + "," + split[1] + ",shipped\n";
-                    try {
-                        fileManager.getProductsWriter().write(output1);
-                        fileManager.getProductsWriter().flush();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    synchronized (uniqueOrdersMap) {
-                        Tema2.uniqueOrdersMap.put(split[0], Tema2.uniqueOrdersMap.get(split[0]) - 1); // decrement cauze we found a product
-
-                        if (Tema2.uniqueOrdersMap.get(split[0]) == 0) {
-                            try {
-                                fileManager.getOrdersWriter().write(_order + "," + const_num_products + ",shipped\n");
-                                fileManager.getOrdersWriter().flush();
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
     }
 }
