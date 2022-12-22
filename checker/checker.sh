@@ -20,7 +20,6 @@ function compare_outputs {
 }
 
 echo "VMCHECKER_TRACE_CLEANUP"
-date
 
 # se compileaza tema
 cd ../src

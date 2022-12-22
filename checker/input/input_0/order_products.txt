@@ -1,7 +1,0 @@
-o_aaaaaa,mar
-o_aaaaaa,par
-o_bbbbbb,gutuie
-o_cccccc,lamaie
-o_bbbbbb,ananas
-o_cccccc,merisoare
-o_cccccc,alune
