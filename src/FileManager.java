@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileWriter;
 
 public class FileManager {
 
@@ -15,6 +16,8 @@ public class FileManager {
     File ordersOutputFile;
     String productsOutputString;
     File productsOutputFile;
+    FileWriter productsWriter;
+    FileWriter ordersWriter;
 
 
     // Getters & Setters
@@ -88,5 +91,21 @@ public class FileManager {
 
     public void setProductsOutputFile(File productsOutputFile) {
         this.productsOutputFile = productsOutputFile;
+    }
+
+    public FileWriter getProductsWriter() {
+        return productsWriter;
+    }
+
+    public void setProductsWriter(FileWriter productsWriter) {
+        this.productsWriter = productsWriter;
+    }
+
+    public FileWriter getOrdersWriter() {
+        return ordersWriter;
+    }
+
+    public void setOrdersWriter(FileWriter ordersWriter) {
+        this.ordersWriter = ordersWriter;
     }
 }

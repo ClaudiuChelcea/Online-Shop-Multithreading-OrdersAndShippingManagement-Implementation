@@ -23,7 +23,7 @@ public class Tema2 implements Runnable {
     private long _nrOfBytesToSkip;
 
     // For making sure we have unique items
-    static HashMap<String, Integer > myMap = new HashMap <> ();;
+    static HashMap<String, Integer > uniqueOrdersMap = new HashMap <> ();;
 
     // Constructor
     public Tema2(long nrOfBytesToSkip) {
@@ -33,45 +33,36 @@ public class Tema2 implements Runnable {
     @Override
     public void run() {
         try {
-            InputStream is = new FileInputStream(fileManager.getOrdersFile());
-            is.skip(_nrOfBytesToSkip);
+            // Go to the point in file where we need to go
+            FileInputStream input = new FileInputStream(fileManager.getOrdersFile());
+            input.skip(_nrOfBytesToSkip);
 
-            // do a computation using the input stream,
-            // checking that we don't read more than (end-start) bytes
-            int end_location = (int)(_nrOfBytesToSkip + fileProgressManager.getChunk_Size());
-            if (end_location - _nrOfBytesToSkip <= 1)
-                return;
+            Scanner myScanner = new Scanner(input);
 
-            Scanner lineScanner = new Scanner(is);
-            String line;
-            while (_nrOfBytesToSkip < end_location) {
-                if (lineScanner.hasNextLine()) {
-                    line = lineScanner.nextLine();
-                    String[] split = line.split(",");
-                    if (split[0].length() <= 0)
-                        continue;;
-                    if (split[0].charAt(0) != 'o') {
-                        // Incomplete line
+            while (_nrOfBytesToSkip < (int)(_nrOfBytesToSkip + fileProgressManager.getChunk_Size())) {
+                if (myScanner.hasNextLine()) {
+                    // Get each line and split the string
+                    String line = myScanner.nextLine();
+                    String[] stringSplit = line.split(",");
+
+                    // Check if we read correctly the line
+                    if (stringSplit[0].length() <= 1 || stringSplit[0].charAt(1) != '_' || line.length() <= 1) {
                         continue;
                     }
-                    if (line.length() <= 1)
-                        continue;
 
-                    synchronized (myMap) {
-                        if (myMap.get(split[0]) != null) { // don't queue the same order more times
+                    synchronized (uniqueOrdersMap) {
+                        if (uniqueOrdersMap.get(stringSplit[0]) != null) {
                             continue;
                         } else {
-                            // Thread pool for each order
-                            // Send all the products for the order
-                            for (int i = 1; i <= Integer.parseInt(split[1]); ++i) {
-                                productsScannerThreadPool.submit(new Products(split[0], i, Integer.parseInt(split[1])));
-                            }
-
-
-                            if (split[0].charAt(1) == '_')
-                                myMap.put(split[0], Integer.parseInt(split[1]));
-
                             _nrOfBytesToSkip += line.length();
+
+                            // Queue all products
+                            if (stringSplit[0].charAt(1) == '_') {
+                                uniqueOrdersMap.put(stringSplit[0], Integer.parseInt(stringSplit[1]));
+                                for (int i = 1; i <= Integer.parseInt(stringSplit[1]); ++i) {
+                                    productsScannerThreadPool.submit(new Products(stringSplit[0], i, Integer.parseInt(stringSplit[1])));
+                                }
+                            }
                         }
                     }
                 } else {
@@ -79,8 +70,7 @@ public class Tema2 implements Runnable {
                 }
             }
 
-
-            is.close();
+            input.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -208,10 +198,10 @@ public class Tema2 implements Runnable {
                         throw new RuntimeException(e);
                     }
 
-                    synchronized (myMap) {
-                        Tema2.myMap.put(split[0], Tema2.myMap.get(split[0]) - 1); // decrement cauze we found a product
+                    synchronized (uniqueOrdersMap) {
+                        Tema2.uniqueOrdersMap.put(split[0], Tema2.uniqueOrdersMap.get(split[0]) - 1); // decrement cauze we found a product
 
-                        if (Tema2.myMap.get(split[0]) == 0) {
+                        if (Tema2.uniqueOrdersMap.get(split[0]) == 0) {
                             try {
                                 myWriter.write(_order + "," + const_num_products + ",shipped\n");
                                 myWriter.flush();
